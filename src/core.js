@@ -214,3 +214,56 @@ class Map {
     else if (Math.random() * 5 < seconds) this.light = 2;
   }
 }
+
+class Player {
+  x;
+  y;
+  direction;
+  weapon;
+  paces = 0;
+
+  constructor(x, y, direction) {
+    this.x = x;
+    this.y = y;
+    this.direction = direction;
+    this.weapon = new Bitmap('assets/knife_hand.png', 319, 320);
+    this.paces = 0;
+  }
+
+  rotate = (angle) => {
+    this.direction = (this.direction + angle + CIRCLE) % (CIRCLE);
+  }
+
+  walk = (distance, map) => {
+    const dx = Math.cos(this.direction) * distance;
+    const dy = Math.sin(this.direction) * distance;
+    if (map.get(this.x + dx, this.y) <= 0) {
+      this.x += dx;
+    }
+    if (map.get(this.x, this.y + dy) <= 0) {
+      this.y += dy;
+    }
+    this.paces += distance;
+  }
+
+  update = (controls, map, seconds) => {
+    for (const key of ['left', 'right', 'forward', 'backward']) {
+      if (controls[key]) {
+        switch (key) {
+          case 'left':
+            this.rotate(-Math.PI * seconds);
+            break;
+          case 'right':
+            this.rotate(Math.PI * seconds);
+            break;
+          case 'forward':
+            this.walk(3 * seconds, map);
+            break;
+          case 'backward':
+            this.walk(-3 * seconds, map);
+            break;
+        }
+      }
+    }
+  }
+}
