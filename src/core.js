@@ -226,7 +226,7 @@ class Player {
     this.x = x;
     this.y = y;
     this.direction = direction;
-    this.weapon = new Bitmap('assets/knife_hand.png', 319, 320);
+    this.weapon = new Bitmap('assets/some_weapon.png', 319, 320);
     this.paces = 0;
   }
 
@@ -326,3 +326,37 @@ class Controls {
   }
 }
 
+class Game {
+  lastTime = 0;
+  callback = () => {};
+
+  constructor() {
+  }
+
+  start = (callback) => {
+    this.callback = callback;
+    requestAnimationFrame(this.frame);
+  }
+
+  frame = (time) => {
+    const seconds = (time - this.lastTime) / 1000;
+    this.lastTime = time;
+    if (seconds < 0.2) this.callback(seconds);
+    requestAnimationFrame(this.frame);
+  }
+}
+
+const display = document.getElementById('display');
+const player = new Player(15.3, -1.2, Math.PI * 0.3);
+const map = new Map(32);
+const controls = new Controls();
+const camera = new Camera(display, typeof MOBILE !== 'undefined' && MOBILE ? 160 : 320, 0.8);
+const game = new Game();
+
+map.randomize();
+
+game.start((seconds) => {
+  map.update(seconds);
+  player.update(controls.states, map, seconds);
+  camera.render(player, map);
+});
