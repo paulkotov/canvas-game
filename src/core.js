@@ -328,20 +328,29 @@ class Controls {
 
 class Game {
   lastTime = 0;
+  accumulator = 0;
+  timestep = 1 / 60; // 60 updates per second
   callback = () => {};
 
-  constructor() {
-  }
+  constructor() {}
 
   start = (callback) => {
     this.callback = callback;
+    this.lastTime = performance.now();
     requestAnimationFrame(this.frame);
   }
 
   frame = (time) => {
-    const seconds = (time - this.lastTime) / 1000;
+    let delta = (time - this.lastTime) / 1000;
+    if (delta > 0.25) delta = 0.25; // clamp delta to avoid spiral of death
     this.lastTime = time;
-    if (seconds < 0.2) this.callback(seconds);
+    this.accumulator += delta;
+
+    while (this.accumulator >= this.timestep) {
+      this.callback(this.timestep);
+      this.accumulator -= this.timestep;
+    }
+
     requestAnimationFrame(this.frame);
   }
 }
