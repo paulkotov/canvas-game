@@ -340,13 +340,12 @@ class Game {
   }
 
   frame = (time) => {
-    let delta = (time - this.lastTime) / 1000;
-    if (delta > 0.25) delta = 0.25; // clamp delta to avoid spiral of death
+    const seconds = (time - this.lastTime) / 1000;
     this.lastTime = time;
 
-    // while (this.accumulator >= this.timestep) {
-    //   this.callback(this.timestep);
-    // }
+    if (seconds < 0.2) {
+      this.callback(seconds);
+    }
 
     requestAnimationFrame(this.frame);
   }
