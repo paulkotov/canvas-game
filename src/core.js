@@ -90,6 +90,7 @@ class Map {
   skybox;
   wallTexture;
   light = 0;
+  objects = []; // Store all game objects (enemies, items, etc.)
 
   constructor(size) {
     this.size = size;
@@ -97,6 +98,11 @@ class Map {
     this.skybox = new Bitmap('assets/deathvalley_panorama.jpg', 2000, 750);
     this.wallTexture = new Bitmap('assets/wall_texture.jpg', 1024, 1024);
     this.light = 0;
+    this.objects = [];
+  }
+
+  addObject(obj) {
+    this.objects.push(obj);
   }
 
   /** 
@@ -212,6 +218,91 @@ class Map {
   update = (seconds) => {
     if (this.light > 0) this.light = Math.max(this.light - 10 * seconds, 0);
     else if (Math.random() * 5 < seconds) this.light = 2;
+  }
+}
+
+class GameObject {
+  x;
+  y;
+  direction;
+  sprite;
+  alive = true;
+
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {number} direction
+   * @param {string} spriteSrc
+   * @param {number} spriteWidth
+   * @param {number} spriteHeight
+   */
+  constructor(x, y, direction = 0, spriteSrc = '', spriteWidth = 32, spriteHeight = 32) {
+    this.x = x;
+    this.y = y;
+    this.direction = direction;
+    this.sprite = spriteSrc ? new Bitmap(spriteSrc, spriteWidth, spriteHeight) : null;
+  }
+
+  /**
+   * Draws the object on the canvas.
+   * @param {Camera} camera
+   */
+  draw(camera) {
+    if (!this.alive || !this.sprite) {
+      return;
+    }
+    const ctx = camera.ctx;
+    const screenX = (this.x / camera.width) * camera.width;
+    const screenY = (this.y / camera.height) * camera.height;
+    ctx.save();
+    ctx.drawImage(
+      this.sprite.image,
+      screenX - this.sprite.width / 2,
+      screenY - this.sprite.height / 2,
+      this.sprite.width,
+      this.sprite.height
+    );
+    ctx.restore();
+  }
+}
+
+class Enemy extends GameObject {
+  speed;
+
+  constructor(x, y, direction = 0, speed = 1, spriteSrc = 'assets/enemy.png') {
+    super(x, y, direction, spriteSrc, 64, 64);
+    this.speed = speed;
+  }
+
+  update(target, map, seconds) {
+    if (!this.alive) return;
+    const dx = target.x - this.x;
+    const dy = target.y - this.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 0.1) {
+      const moveX = (dx / dist) * this.speed * seconds;
+      const moveY = (dy / dist) * this.speed * seconds;
+      if (map.get(this.x + moveX, this.y) <= 0) this.x += moveX;
+      if (map.get(this.x, this.y + moveY) <= 0) this.y += moveY;
+      this.direction = Math.atan2(dy, dx);
+    }
+  }
+}
+
+class Item extends GameObject {
+  type;
+
+  constructor(x, y, type = 'health', spriteSrc = 'assets/health_pack.png') {
+    super(x, y, 0, spriteSrc, 32, 32);
+    this.type = type;
+  }
+
+  // Example: item effect
+  use(player) {
+    if (this.type === 'health') {
+      player.health = Math.min(player.health + 25, 100);
+      this.alive = false;
+    }
   }
 }
 
@@ -351,67 +442,6 @@ class Game {
   }
 }
 
-class Enemy {
-  x;
-  y;
-  direction;
-  speed;
-  sprite;
-  alive = true;
-
-  /**
-   * Creates an enemy at the given position and direction.
-   * @param {number} x - X coordinate.
-   * @param {number} y - Y coordinate.
-   * @param {number} direction - Facing direction in radians.
-   * @param {number} speed - Movement speed.
-   * @param {string} spriteSrc - Path to enemy sprite image.
-   */
-  constructor(x, y, direction = 0, speed = 1, spriteSrc = 'assets/enemy.png') {
-    this.x = x;
-    this.y = y;
-    this.direction = direction;
-    this.speed = speed;
-    this.sprite = new Bitmap(spriteSrc, 64, 64);
-  }
-
-  /**
-   * Moves the enemy towards the target (e.g., player).
-   * @param {Object} target - Target with x and y properties.
-   * @param {Map} map - The game map for collision detection.
-   * @param {number} seconds - Time delta for movement.
-   */
-  update(target, map, seconds) {
-    if (!this.alive) return;
-    // Simple chase logic
-    const dx = target.x - this.x;
-    const dy = target.y - this.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > 0.1) {
-      const moveX = (dx / dist) * this.speed * seconds;
-      const moveY = (dy / dist) * this.speed * seconds;
-      if (map.get(this.x + moveX, this.y) <= 0) this.x += moveX;
-      if (map.get(this.x, this.y + moveY) <= 0) this.y += moveY;
-      this.direction = Math.atan2(dy, dx);
-    }
-  }
-
-  /**
-   * Draws the enemy on the canvas.
-   * @param {Camera} camera - The camera instance for drawing.
-   */
-  draw(camera) {
-    if (!this.alive) return;
-    const ctx = camera.ctx;
-    // Project enemy position to screen (simple version)
-    const screenX = (this.x / camera.width) * camera.width;
-    const screenY = (this.y / camera.height) * camera.height;
-    ctx.save();
-    ctx.drawImage(this.sprite.image, screenX - this.sprite.width / 2, screenY - this.sprite.height / 2, this.sprite.width, this.sprite.height);
-    ctx.restore();
-  }
-}
-
 const display = document.getElementById('display');
 const player = new Player(15.3, -1.2, Math.PI * 0.3);
 const map = new Map(32);
@@ -421,8 +451,22 @@ const game = new Game();
 
 map.randomize();
 
+// Add objects to the map
+map.addObject(new Enemy(10, 10, 0, 1));
+map.addObject(new Enemy(20, 20, 0, 1.2));
+map.addObject(new Item(5, 5, 'health', 'assets/health_pack.png'));
+
 game.start((seconds) => {
   map.update(seconds);
   player.update(controls.states, map, seconds);
+
+  // Update and draw all objects
+  for (const obj of map.objects) {
+    if (obj instanceof Enemy) {
+      obj.update(player, map, seconds);
+    }
+    obj.draw(camera);
+  }
+
   camera.render(player, map);
 });
