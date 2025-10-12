@@ -292,17 +292,50 @@ class Enemy extends GameObject {
 class Item extends GameObject {
   type;
 
-  constructor(x, y, type = 'health', spriteSrc = 'assets/health_pack.png') {
-    super(x, y, 0, spriteSrc, 32, 32);
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {string} type - 'health', 'weapon', 'ammo', 'hemlet'
+   * @param {string} spriteSrc
+   */
+  constructor(x, y, type = 'health', spriteSrc) {
+    let defaultSprite = 'assets/health_pack.png';
+    switch (type) {
+      case 'weapon':
+        defaultSprite = 'assets/weapon_item.png';
+        break;
+      case 'ammo':
+        defaultSprite = 'assets/ammo_item.png';
+        break;
+      case 'hemlet':
+        defaultSprite = 'assets/hemlet_item.png';
+        break;
+      case 'health':
+      default:
+        defaultSprite = 'assets/health_pack.png';
+        break;
+    }
+    super(x, y, 0, spriteSrc || defaultSprite, 32, 32);
     this.type = type;
   }
 
   // Example: item effect
   use(player) {
-    if (this.type === 'health') {
-      player.health = Math.min(player.health + 25, 100);
-      this.alive = false;
+    switch (this.type) {
+      case 'health':
+        player.health = Math.min(player.health + 25, 100);
+        break;
+      case 'weapon':
+        player.hasWeapon = true;
+        break;
+      case 'ammo':
+        player.ammo = (player.ammo || 0) + 10;
+        break;
+      case 'hemlet':
+        player.hasHemlet = true;
+        break;
     }
+    this.alive = false;
   }
 }
 
